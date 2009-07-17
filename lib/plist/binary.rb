@@ -176,7 +176,7 @@ module Plist
         # Must be a table of object references as returned by flatten_collection.
         result = (CFBinaryPlistMarkerDict | (obj.length < 15 ? obj.length : 0xf)).chr
         result += binary_plist_obj(obj.length) if obj.length >= 15
-        result += obj.to_a.flatten.pack("N*")
+        result += obj.keys.pack("N*") + obj.values.pack("N*")
       else
         return binary_plist_data(Marshal.dump(obj))
       end
