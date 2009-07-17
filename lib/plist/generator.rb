@@ -5,6 +5,9 @@
 # Distributed under the MIT license.                         #
 ##############################################################
 #++
+
+require "plist/binary"
+
 # See Plist::Emit.
 module Plist
   # === Create a plist
@@ -23,13 +26,13 @@ module Plist
   # For detailed usage instructions, refer to USAGE[link:files/docs/USAGE.html] and the methods documented below.
   module Emit
     # Helper method for injecting into classes.  Calls <tt>Plist::Emit.dump</tt> with +self+.
-    def to_plist(envelope = true)
-      return Plist::Emit.dump(self, envelope)
+    def to_plist(envelope = true, format = :xml)
+      return Plist::Emit.dump(self, envelope, format)
     end
 
     # Helper method for injecting into classes.  Calls <tt>Plist::Emit.save_plist</tt> with +self+.
-    def save_plist(filename)
-      Plist::Emit.save_plist(self, filename)
+    def save_plist(filename, format = :xml)
+      Plist::Emit.save_plist(self, filename, format)
     end
 
     # The following Ruby classes are converted into native plist types:
@@ -40,18 +43,31 @@ module Plist
     # +IO+ and +StringIO+ objects are encoded and placed in <data> elements; other objects are <tt>Marshal.dump</tt>'ed unless they implement +to_plist_node+.
     #
     # The +envelope+ parameters dictates whether or not the resultant plist fragment is wrapped in the normal XML/plist header and footer.  Set it to false if you only want the fragment.
-    def self.dump(obj, envelope = true)
-      output = plist_node(obj)
-
-      output = wrap(output) if envelope
-
+    def self.dump(obj, envelope = true, format = :xml)
+      case format
+      when :xml
+        output = plist_node(obj)  
+        output = wrap(output) if envelope
+      when :binary
+        raise(ArgumentError, "binary plists must have an envelope") unless envelope
+        output = Plist::Binary.binary_plist(obj)
+      else
+        raise(ArgumentError, "unknown plist format `#{format}'")
+      end
       return output
     end
 
     # Writes the serialized object's plist to the specified filename.
-    def self.save_plist(obj, filename)
+    def self.save_plist(obj, filename, format = :xml)
       File.open(filename, 'wb') do |f|
-        f.write(obj.to_plist)
+        case format
+        when :xml
+          f.write(obj.to_plist(true, format))
+        when :binary
+          f.write(Plist::Binary.binary_plist(obj))
+        else
+          raise(ArgumentError, "unknown plist format `#{format}'")
+        end
       end
     end
 
