@@ -9,7 +9,8 @@ module Plist
     # Set, the property list includes its contents.
     def self.binary_plist(obj)
       encoded_objs = flatten_collection(obj)
-      encoded_objs.collect! {|o| binary_plist_obj(o)}
+      ref_byte_size = min_byte_size(encoded_objs.length - 1)
+      encoded_objs.collect! {|o| binary_plist_obj(o, ref_byte_size)}
       # Write header and encoded objects.
       plist = "bplist00" + encoded_objs.join
       # Write offset table.
@@ -20,7 +21,7 @@ module Plist
         offset_table << offset
         offset += o.length
       end
-      offset_byte_size = min_byte_size(([offset] + offset_table).max)
+      offset_byte_size = min_byte_size(offset)
       offset_table.each do |offset|
         plist += pack_int(offset, offset_byte_size)
       end
@@ -28,7 +29,7 @@ module Plist
       plist += "\0\0\0\0\0\0" # Six unused bytes
       plist += [
         offset_byte_size,
-        4, # Byte size of object references in arrays, sets, and dictionaries
+        ref_byte_size,
         encoded_objs.length >> 32, encoded_objs.length & 0xffffffff,
         0, 0, # Index of root object
         offset_table_addr >> 32, offset_table_addr & 0xffffffff
@@ -147,7 +148,9 @@ module Plist
     #   decoded_s = decode_binary_plist_obj(encoded_s)
     #   puts decoded_s.class # => String
     #
-    def self.binary_plist_obj(obj)
+    # +ref_byte_size+ is the number of bytes to use for storing references to
+    # other objects.
+    def self.binary_plist_obj(obj, ref_byte_size = 4)
       case obj
       when Symbol
       when String
@@ -234,17 +237,18 @@ module Plist
         # Must be an array of object references as returned by flatten_collection.
         result = (CFBinaryPlistMarkerArray | (obj.length < 15 ? obj.length : 0xf)).chr
         result += binary_plist_obj(obj.length) if obj.length >= 15
-        result += obj.pack("N*")
+        result += obj.collect! { |i| pack_int(i, ref_byte_size) }.join
       when Set
         # Must be a set of object references as returned by flatten_collection.
         result = (CFBinaryPlistMarkerSet | (obj.length < 15 ? obj.length : 0xf)).chr
         result += binary_plist_obj(obj.length) if obj.length >= 15
-        result += obj.to_a.pack("N*")
+        result += obj.to_a.collect! { |i| pack_int(i, ref_byte_size) }.join
       when Hash
         # Must be a table of object references as returned by flatten_collection.
         result = (CFBinaryPlistMarkerDict | (obj.length < 15 ? obj.length : 0xf)).chr
         result += binary_plist_obj(obj.length) if obj.length >= 15
-        result += obj.keys.pack("N*") + obj.values.pack("N*")
+        result += obj.keys.collect! { |i| pack_int(i, ref_byte_size) }.join
+        result += obj.values.collect! { |i| pack_int(i, ref_byte_size) }.join
       else
         return binary_plist_data(Marshal.dump(obj))
       end
