@@ -152,10 +152,14 @@ module Plist
     # other objects.
     def self.binary_plist_obj(obj, ref_byte_size = 4)
       case obj
-      when Symbol
       when String
         obj = obj.to_s if obj.is_a?(Symbol)
+        # This doesn't really work. NKF's guess method is really, really bad
+        # at discovering UTF8 when only a handful of characters are multi-byte.
         encoding = NKF.guess2(obj)
+        if encoding == NKF::ASCII && obj =~ /[\x80-\xff]/
+          encoding = NKF::UTF8
+        end
         if [NKF::ASCII, NKF::BINARY, NKF::UNKNOWN].include?(encoding)
           result = (CFBinaryPlistMarkerASCIIString |
             (obj.length < 15 ? obj.length : 0xf)).chr
@@ -187,6 +191,9 @@ module Plist
               i += 3
             else
               codepoints << byte
+            end
+            if codepoints.last > 0xffff
+              raise(ArgumentError, "codepoint too high - only the Basic Multilingual Plane can be encoded")
             end
             i += 1
           end
