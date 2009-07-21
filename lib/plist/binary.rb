@@ -201,28 +201,9 @@ module Plist
       when Float
         return (CFBinaryPlistMarkerReal | 3).chr + [obj].pack("G")
       when Integer
-        if obj <= 0xff
-          nbytes = 1
-          size_bits = 0
-        elsif obj <= 0xffff
-          nbytes = 2
-          size_bits = 1
-        elsif obj <= 0xffffffff
-          nbytes = 4
-          size_bits = 2
-        elsif obj <= 0xffffffffffffffff
-          nbytes = 8
-          size_bits = 3
-        elsif obj <= 0xffffffffffffffffffffffffffffffff # yes, really
-          nbytes = 16
-          size_bits = 4
-        else
-          raise(RangeError, "integer too big - exceeds 128 bits")
-        end
-        words = [obj >> 96, (obj >> 64) & 0xffffffff, (obj >> 32) & 0xffffffff,
-          obj & 0xffffffff]
-        huge_num = words.pack("NNNN")
-        return (CFBinaryPlistMarkerInt | size_bits).chr + huge_num[-nbytes, nbytes]
+        nbytes = min_byte_size(obj)
+        size_bits = { 1 => 0, 2 => 1, 4 => 2, 8 => 3, 16 => 4 }[nbytes]
+        return (CFBinaryPlistMarkerInt | size_bits).chr + pack_int(obj, nbytes)
       when TrueClass
         return CFBinaryPlistMarkerTrue.chr
       when FalseClass
@@ -269,30 +250,39 @@ module Plist
     
     # Determines the minimum number of bytes that is a power of two and can
     # represent the integer +i+. Raises a RangeError if the number of bytes
-    # exceeds 16. Returns an array with two values: the number of bytes, and a
-    # character that can be used with the pack method.
+    # exceeds 16. Note that the property list format considers integers of 1,
+    # 2, and 4 bytes to be unsigned, while 8- and 16-byte integers are signed;
+    # thus negative integers will always require at least 8 bytes of storage.
     def self.min_byte_size(i)
-      if i <= 0xff
-        return 1
-      elsif i <= 0xffff
-        return 2
-      elsif i <= 0xffffffff
-        return 4
-      elsif i <= 0xffffffffffffffff
-        return 8
-      elsif i <= 0xffffffffffffffffffffffffffffffff
-        return 16
+      if i < 0
+        i = i.abs - 1
       else
-        raise(RangeError, "integer too big - exceeds 128 bits")
+        if i <= 0xff
+          return 1
+        elsif i <= 0xffff
+          return 2
+        elsif i <= 0xffffffff
+          return 4
+        end
+      end      
+      if i <= 0x7fffffffffffffff
+        return 8
+      elsif i <= 0x7fffffffffffffffffffffffffffffff
+        return 16
       end
+      raise(RangeError, "integer too big - exceeds 128 bits")
     end
     
     # Packs an integer +i+ into its binary representation in the specified
-    # number of bytes. Byte order is big-endian.
+    # number of bytes. Byte order is big-endian. Negative integers cannot be
+    # stored in 1, 2, or 4 bytes.
     def self.pack_int(i, num_bytes)
+      if i < 0 && num_bytes < 8
+        raise(ArgumentError, "negative integers require 8 or 16 bytes of storage")
+      end
       case num_bytes
       when 1:
-        [i].pack("C")
+        [i].pack("c")
       when 2:
         [i].pack("n")
       when 4:
@@ -303,7 +293,7 @@ module Plist
         [i >> 96, (i >> 64) & 0xffffffff, (i >> 32) & 0xffffffff,
           i & 0xffffffff].pack("NNNN")
       else
-        raise(RangeError, "num_bytes must be 1, 2, 4, 8, or 16")
+        raise(ArgumentError, "num_bytes must be 1, 2, 4, 8, or 16")
       end
     end
   end
