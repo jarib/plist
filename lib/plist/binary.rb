@@ -15,14 +15,19 @@ module Plist
       # Write offset table.
       offset_table_addr = plist.length
       offset = 8
+      offset_table = []
       encoded_objs.each do |o|
-        plist += [offset >> 32, offset & 0xffffffff].pack("NN")
+        offset_table << offset
         offset += o.length
+      end
+      offset_byte_size = min_byte_size(([offset] + offset_table).max)
+      offset_table.each do |offset|
+        plist += pack_int(offset, offset_byte_size)
       end
       # Write trailer.
       plist += "\0\0\0\0\0\0" # Six unused bytes
       plist += [
-        8, # Byte size of offsets
+        offset_byte_size,
         4, # Byte size of object references in arrays, sets, and dictionaries
         encoded_objs.length >> 32, encoded_objs.length & 0xffffffff,
         0, 0, # Index of root object
@@ -253,6 +258,46 @@ module Plist
       result += binary_plist_obj(data.length) if data.length > 15
       result += data
       return result
+    end
+    
+    # Determines the minimum number of bytes that is a power of two and can
+    # represent the integer +i+. Raises a RangeError if the number of bytes
+    # exceeds 16. Returns an array with two values: the number of bytes, and a
+    # character that can be used with the pack method.
+    def self.min_byte_size(i)
+      if i <= 0xff
+        return 1
+      elsif i <= 0xffff
+        return 2
+      elsif i <= 0xffffffff
+        return 4
+      elsif i <= 0xffffffffffffffff
+        return 8
+      elsif i <= 0xffffffffffffffffffffffffffffffff
+        return 16
+      else
+        raise(RangeError, "integer too big - exceeds 128 bits")
+      end
+    end
+    
+    # Packs an integer +i+ into its binary representation in the specified
+    # number of bytes. Byte order is big-endian.
+    def self.pack_int(i, num_bytes)
+      case num_bytes
+      when 1:
+        [i].pack("C")
+      when 2:
+        [i].pack("n")
+      when 4:
+        [i].pack("N")
+      when 8:
+        [(i >> 32) & 0xffffffff, i & 0xffffffff].pack("NN")
+      when 16:
+        [i >> 96, (i >> 64) & 0xffffffff, (i >> 32) & 0xffffffff,
+          i & 0xffffffff].pack("NNNN")
+      else
+        raise(RangeError, "num_bytes must be 1, 2, 4, 8, or 16")
+      end
     end
   end
 end
