@@ -62,7 +62,7 @@ class TestParser < Test::Unit::TestCase
   def test_date_fields
     result = Plist::parse_xml("test/assets/Cookies.plist")
     assert_kind_of( DateTime, result.first['Expires'] )
-    assert_equal( "2007-10-25T12:36:35Z", result.first['Expires'].to_s )
+    assert_match( /\A2007-10-25T12:36:35(Z|\+00:00)\Z/, result.first['Expires'].to_s )
   end
 
   # bug fix for empty <key>
