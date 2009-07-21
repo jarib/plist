@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name    = "plist"
-  s.version = "3.1.3"
+  s.version = "3.1.4"
 
   s.summary     = "All-purpose Property List manipulation library."
   s.description = <<-EOD
