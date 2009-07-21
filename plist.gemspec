@@ -19,8 +19,8 @@ EOD
 
   s.has_rdoc = true
 
-  s.files      = TEST_FILES
-  s.test_files = RELEASE_FILES
+  s.files      = RELEASE_FILES
+  s.test_files = TEST_FILES
 
   s.autorequire = 'plist'
 end
