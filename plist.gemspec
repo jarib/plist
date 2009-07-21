@@ -5,7 +5,7 @@ RELEASE_FILES = [ "Rakefile", "README", "MIT-LICENSE", "docs/USAGE" ] + LIB_FILE
 
 Gem::Specification.new do |s|
   s.name    = "plist"
-  s.version = "3.1.1"
+  s.version = "3.1.2"
 
   s.summary     = "All-purpose Property List manipulation library."
   s.description = <<-EOD
