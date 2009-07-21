@@ -108,6 +108,7 @@ module Plist
         id_refs[collection.object_id] = obj_list.length
         obj_list << obj_refs
         collection.each do |key, value|
+          key = key.to_s if key.is_a?(Symbol)
           flatten_collection(key, obj_list, id_refs)
           flatten_collection(value, obj_list, id_refs)
           obj_refs[id_refs[key.object_id]] = id_refs[value.object_id]
@@ -148,7 +149,9 @@ module Plist
     #
     def self.binary_plist_obj(obj)
       case obj
+      when Symbol
       when String
+        obj = obj.to_s if obj.is_a?(Symbol)
         encoding = NKF.guess2(obj)
         if [NKF::ASCII, NKF::BINARY, NKF::UNKNOWN].include?(encoding)
           result = (CFBinaryPlistMarkerASCIIString |
