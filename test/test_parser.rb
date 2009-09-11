@@ -22,8 +22,8 @@ class TestParser < Test::Unit::TestCase
                    "List of Keywords",
                    "Archive Path",
                    "List of Rolls",
-                   "Application Version"],
-                  result.keys )
+                   "Application Version"].sort,
+                  result.keys.sort )
 
     # array
     assert_kind_of( Array, result["List of Rolls"] )
