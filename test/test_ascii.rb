@@ -1,4 +1,7 @@
+# encoding: utf-8
+
 require "test/unit"
+require "date"
 require "plist/ascii"
 
 class TestAscii < Test::Unit::TestCase
@@ -23,7 +26,9 @@ class TestAscii < Test::Unit::TestCase
   end
 
   def test_should_correctly_parse_octal_escapes
-    assert_equal({'foo' => "\303"}, parse('{ foo = "\303"; }'))
+    expected = "\303\246"
+    expected.force_encoding("BINARY") if expected.respond_to?(:force_encoding)
+    assert_equal({'foo' => expected}, parse('{ foo = "\303\246"; }'))
   end
 
   def test_should_correctly_parse_escaped_strings
