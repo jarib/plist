@@ -97,11 +97,12 @@ module Plist
       puts "creating quoted string #{inspect}" if @debug
 
       result = ''
+
       loop do
         if scan(/\\/)
           result << escaped
         elsif scan(/"/)
-          return result
+          break
         elsif eos?
           error("unterminated quoted string")
         else scan(/./)
@@ -174,7 +175,8 @@ module Plist
         return nil unless val
         skip_space
 
-        unless skip(/,/)
+        unless skip(/,\s*/)
+          skip_space
           if scan(/\)/)
             return arr << val
           else

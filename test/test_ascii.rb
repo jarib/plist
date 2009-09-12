@@ -11,6 +11,7 @@ class TestAscii < Test::Unit::TestCase
 
   def test_should_parse_a_simple_array
     assert_equal(%w[1 2 3], parse("(1, 2, 3)"))
+    assert_equal(%w[foo], parse("(foo, )"))
   end
 
   def test_should_assume_dictionary_keys_are_strings_when_they_start_with_a_number
@@ -19,6 +20,10 @@ class TestAscii < Test::Unit::TestCase
 
   def test_should_correctly_parse_escaped_unicode_points
     assert_equal({'foo' => "æ"}, parse('{ foo = "\u00e6"; }'))
+  end
+
+  def test_should_always_return_string_keys
+    assert_equal({'1234' => 'boo'}, parse_with_numbers('{ 1234 = boo; }'))
   end
 
   def test_should_correctly_parse_control_chars
@@ -74,9 +79,21 @@ class TestAscii < Test::Unit::TestCase
     end
   end
 
+  def test_should_raise_error_on_missing_closing_parenthesis
+    assert_raises Plist::AsciiParser::ParseError do
+      parse "( foo, bar "
+    end
+  end
+
   def test_should_raise_error_on_missing_end_quote
     assert_raises Plist::AsciiParser::ParseError do
       parse '{ foo = "bar; }'
+    end
+  end
+
+  def test_wshould_raise_error_on_empty_string
+    assert_raises Plist::AsciiParser::ParseError do
+      parse ''
     end
   end
 
